@@ -1,6 +1,6 @@
 from __future__ import annotations
 import uuid
-from src.rag_pipeline import RAGEngine
+from rag_pipeline import RAGEngine
 
 def new_session_id() -> str:
     return str(uuid.uuid4())

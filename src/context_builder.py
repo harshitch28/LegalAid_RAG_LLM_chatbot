@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List, Dict, Any
 
-from src.config import CONTEXT_CHAR_BUDGET, TOP_KB_SNIPPETS, TOP_MEMORY_AFTER_SCORE
+from config import CONTEXT_CHAR_BUDGET, TOP_KB_SNIPPETS, TOP_MEMORY_AFTER_SCORE
 
 def _clip_char_budget(blocks: List[Dict[str, str]], budget: int) -> List[Dict[str, str]]:
     total = 0

@@ -3,8 +3,8 @@ import os, time, uuid
 from dotenv import load_dotenv
 import streamlit as st
 
-from src.rag_pipeline import RAGEngine
-from src.memory import MemoryStore
+from rag_pipeline import RAGEngine
+from memory import MemoryStore
 
 load_dotenv()
 # ---- UI / App config ----

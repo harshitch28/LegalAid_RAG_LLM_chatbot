@@ -5,10 +5,10 @@ from typing import Dict, Any, List
 import google.generativeai as genai
 from dotenv import load_dotenv
 
-from src.retriever import Retriever
-from src.memory import MemoryStore
-from src.context_builder import build_context_blocks, render_prompt
-from src.config import TOP_KB_SNIPPETS, TOP_MEMORY_AFTER_SCORE
+from retriever import Retriever
+from memory import MemoryStore
+from context_builder import build_context_blocks, render_prompt
+from config import TOP_KB_SNIPPETS, TOP_MEMORY_AFTER_SCORE
 
 # Configure Gemini
 load_dotenv()

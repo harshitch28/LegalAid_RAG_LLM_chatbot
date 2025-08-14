@@ -6,7 +6,7 @@ import math, uuid
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-from src.config import (
+from config import (
     VECTOR_DIR, MEMORY_COLLECTION, EMB_MODEL,
     SIM_WEIGHT, RECENCY_WEIGHT, ROLE_WEIGHT, SESSION_WEIGHT,
     RECENCY_HALFLIFE_HOURS, ROLE_SCORES, SAME_SESSION_BONUS, DIFFERENT_SESSION_BONUS,

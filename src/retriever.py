@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-from src.config import VECTOR_DIR, KB_COLLECTION, EMB_MODEL
+from config import VECTOR_DIR, KB_COLLECTION, EMB_MODEL
 
 class Retriever:
     def __init__(self, top_k: int = 5):

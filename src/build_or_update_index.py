@@ -6,9 +6,9 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
-from src.config import DATA_PROCESSED, NOTES_DIR, VECTOR_DIR, KB_COLLECTION, EMB_MODEL, MAX_CHARS, OVERLAP, STATE_DIR
-from src.utils import soft_clean, sliding_chunks, sha256_text
-from src.state_registry import StateRegistry
+from config import DATA_PROCESSED, NOTES_DIR, VECTOR_DIR, KB_COLLECTION, EMB_MODEL, MAX_CHARS, OVERLAP, STATE_DIR
+from utils import soft_clean, sliding_chunks, sha256_text
+from state_registry import StateRegistry
 
 def load_jsonl(path: Path):
     with path.open("r", encoding="utf-8") as f:
