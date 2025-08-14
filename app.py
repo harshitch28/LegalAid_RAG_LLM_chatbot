@@ -32,7 +32,11 @@ def chat_fn(history, user_id, session_id, include_memory, include_kb, show_citat
         return history, gr.update(value=""), f"Error: {e}"
     elapsed = time.time() - start
     answer = result.get("answer", "").strip()
-    history = history + [[query, answer]]
+    # Append messages as dicts for Gradio 'messages' format
+    history = history + [
+        {"role": "user", "content": query},
+        {"role": "assistant", "content": answer}
+    ]
 
     citations = ""
     if show_citations:
@@ -62,7 +66,18 @@ def chat_fn(history, user_id, session_id, include_memory, include_kb, show_citat
 def export_conversation(history, user_id, session_id):
     if not history:
         return None
-    txt = "\n\n".join([f"You: {q}\nBot: {a}" for q, a in history])
+    # Extract content from dicts
+    pairs = []
+    for i in range(0, len(history), 2):
+        user_msg = history[i] if i < len(history) and history[i].get("role") == "user" else None
+        bot_msg = history[i+1] if i+1 < len(history) and history[i+1].get("role") == "assistant" else None
+        if user_msg and bot_msg:
+            pairs.append(f"You: {user_msg['content']}\nBot: {bot_msg['content']}")
+        elif user_msg:
+            pairs.append(f"You: {user_msg['content']}")
+        elif bot_msg:
+            pairs.append(f"Bot: {bot_msg['content']}")
+    txt = "\n\n".join(pairs)
     filename = f"conversation_{user_id}_{session_id[:8]}.txt"
     return gr.File.update(value=(filename, txt.encode("utf-8")))
 
