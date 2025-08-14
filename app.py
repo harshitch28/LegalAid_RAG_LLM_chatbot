@@ -1,4 +1,6 @@
 # src/app.py
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 import os, time, uuid
 from dotenv import load_dotenv
 import streamlit as st
