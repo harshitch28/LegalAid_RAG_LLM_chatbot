@@ -37,14 +37,14 @@ Create a chatbot that maintains conversation history while using RAG to provide 
 ## Demo
 
 A fully working demo is deployed via Gradio.  
-**[Live Demo Link](YOUR_DEPLOYED_APP_URL_HERE)**
+**[Live Demo Link]   =>   https://huggingface.co/spaces/harshit-chauhan-28/LegalAid-Chatbot-RAG
 
 ## Setup Instructions
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/YOUR_GITHUB_USERNAME/legal_rag_chatbot.git
-   cd legal_rag_chatbot
+   git clone https://github.com/harshitch28/LegalAid_RAG_LLM_chatbot.git
+   cd LegalAid_RAG_LLM_chatbot
    ```
 
 2. **Install dependencies:**
@@ -86,9 +86,8 @@ A fully working demo is deployed via Gradio.
 
 ## Submission Requirements
 
-- **GitHub repo link:** [YOUR_REPO_URL_HERE]
-- **Deployed app link:** [YOUR_DEPLOYED_APP_URL_HERE]
-- **Deadline:** 3 days from assignment date
+- **GitHub repo link:** =>    https://github.com/harshitch28/LegalAid_RAG_LLM_chatbot
+- **Deployed app link:**   =>   https://huggingface.co/spaces/harshit-chauhan-28/LegalAid-Chatbot-RAG
 
 ## License
 
@@ -97,6 +96,6 @@ _Disclaimer: The chatbot does not provide legal advice. See disclaimer in the ap
 
 ---
 
-**Developed by:** [Your Name]  
-**Contact:** [Your Email]
+**Developed by:** Harshit Chauhan  
+**Contact:** harshit.cr@gmail.com
 
