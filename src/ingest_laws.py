@@ -41,17 +41,23 @@ def download_pdfs():
 
 def pdf_to_text(pdf_path):
     reader = PdfReader(str(pdf_path))
-    pages = [p.extract_text() or "" for p in reader.pages]
-    return "\n".join(pages)
+    #pages = [p.extract_text() or "" for p in reader.pages]
+    #return "\n".join(pages)
+    text = []
+    for page in reader.pages:
+        text.append(page.extract_text() or "")
+        #print(page.extract_text())
+    return "\n".join(text)
 
 def clean_text(s):
     s = s.replace("\x00", "")
     s = re.sub(r"[ \t]+", " ", s)
     s = re.sub(r"\n{3,}", "\n\n", s)
     s = re.sub(r"\n\d+\s*/\s*\d+\s*\n", "\n", s)
+    #print(s.strip())
     return s.strip()
 
-SEP_PATTERN = re.compile(r"(?m)^(Section|Article)\s+(\d+[A-Za-z\-]*)\b.*")
+SEP_PATTERN = re.compile(r"(?m)^(Section|Article)\s+(\d+[A-Za-z\-]*)\b.*",re.IGNORECASE)
 
 def split_sections(text):
     # Find all headings
