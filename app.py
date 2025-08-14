@@ -1,169 +1,118 @@
-# src/app.py
 import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
-import os, time, uuid
-from dotenv import load_dotenv
-import streamlit as st
 
+import os, uuid, time
+from dotenv import load_dotenv
+import gradio as gr
 from rag_pipeline import RAGEngine
 from memory import MemoryStore
 
 load_dotenv()
-# ---- UI / App config ----
-st.set_page_config(page_title="LegalAid Chatbot (RAG+Memory)", layout="wide")
-st.title("🇮🇳 LegalAid — Conversational RAG with Memory (Gemini + Chroma)")
 
-# Instantiate engine & memory as cached resources (singletons)
-@st.cache_resource
-def get_engine():
-    return RAGEngine()
+engine = RAGEngine()
+memory = MemoryStore()
 
-@st.cache_resource
-def get_memory():
-    return MemoryStore()
-
-engine = get_engine()
-memory = get_memory()
-
-# --- Left column: user/session controls ---
-col1, col2 = st.columns([1, 3])
-with col1:
-    st.header("Session Controls")
-
-    if "user_id" not in st.session_state:
-        st.session_state.user_id = f"user_{str(uuid.uuid4())[:8]}"
-    # simple user_id input (no auth) — for demo only
-    user_id = st.text_input("User ID:", st.session_state.user_id)
-    st.session_state.user_id = user_id.strip() or st.session_state.user_id
-
-    # list sessions for the user
-    sessions = memory.list_sessions(user_id=st.session_state.user_id)
+def get_sessions(user_id):
+    sessions = memory.list_sessions(user_id=user_id)
     session_ids = [s["session_id"] for s in sessions]
-    session_label_map = {s["session_id"]: f"{s['session_id'][:8]} (msgs:{s['count']})" for s in sessions}
+    session_labels = [f"{sid[:8]} (msgs:{s['count']})" for sid, s in zip(session_ids, sessions)]
+    return session_ids, session_labels
 
-    if "session_id" not in st.session_state:
-        # start a brand new session
-        st.session_state.session_id = str(uuid.uuid4())
+def start_new_session(user_id):
+    session_id = str(uuid.uuid4())
+    return session_id
 
-    # Create new session button
-    if st.button("🆕 Start new session"):
-        st.session_state.session_id = str(uuid.uuid4())
-        st.success(f"New session: {st.session_state.session_id[:8]}")
+def chat_fn(history, user_id, session_id, include_memory, include_kb, show_citations, query):
+    if not query:
+        return history, gr.update(value=""), ""
+    start = time.time()
+    try:
+        result = engine.answer(user_id=user_id, session_id=session_id, query=query)
+    except Exception as e:
+        return history, gr.update(value=""), f"Error: {e}"
+    elapsed = time.time() - start
+    answer = result.get("answer", "").strip()
+    history = history + [[query, answer]]
 
-    # Session selector (if sessions exist)
-    if session_ids:
-        sel = st.selectbox("Choose existing session:", options=["(current)"] + session_ids, format_func=lambda x: session_label_map.get(x, "(new)"))
-        if sel != "(current)":
-            st.session_state.session_id = sel
-
-    st.markdown("**Session id:**")
-    st.code(st.session_state.session_id[:64])
-    st.divider()
-
-    # Toggle options
-    st.header("Options")
-    include_memory = st.checkbox("Include user memory", value=True, help="Use past conversations from this user as context")
-    include_kb = st.checkbox("Include legal KB", value=True, help="Retrieve law text from KB")
-    show_citations = st.checkbox("Show citations in response", value=True)
-
-    st.divider()
-    st.header("Actions")
-    if st.button("Export conversation (.txt)"):
-        # export from session_state
-        hist = st.session_state.get("history", [])
-        if hist:
-            txt = "\n\n".join([f"You: {q}\nBot: {a}" for q, a in hist])
-            st.download_button("Download conversation", data=txt, file_name=f"conversation_{st.session_state.user_id}_{st.session_state.session_id[:8]}.txt")
+    citations = ""
+    if show_citations:
+        used_kb = result.get("used_kb", [])
+        if used_kb:
+            citations += "**Citations / KB blocks used:**\n"
+            for i, b in enumerate(used_kb, 1):
+                meta = b.get("meta", {})
+                title = f"{meta.get('act','') } §{meta.get('section_number','')} {meta.get('section_title','')}"
+                citations += f"- [{i}] {title} — source: `{meta.get('source_file','')}`\n"
         else:
-            st.info("No conversation to export.")
+            citations += "_No KB snippets used._\n"
 
-    if st.button("Clear local history (UI only)"):
-        st.session_state.history = []
-        st.success("Cleared UI history (backend memory still persists).")
-
-    st.caption("Disclaimer: This is an educational aid, not legal advice. See app disclaimer in README.")
-
-# --- Right column: chat area ---
-with col2:
-    st.header("Chat")
-
-    if "history" not in st.session_state:
-        st.session_state.history = []
-
-    # Input box for user queries
-    query = st.text_input("Ask your legal question:", key="query_input")
-    send = st.button("Send")
-
-    # handle send
-    if send and query:
-        # show spinner while waiting
-        with st.spinner("Retrieving context and generating answer..."):
-            start = time.time()
-            # call engine; engine.answer returns structured dict
-            try:
-                result = engine.answer(user_id=st.session_state.user_id,
-                                       session_id=st.session_state.session_id,
-                                       query=query)
-            except Exception as e:
-                st.error(f"Error from backend: {e}")
-                result = None
-
-            elapsed = time.time() - start
-
-        if result:
-            answer = result.get("answer", "").strip()
-            st.session_state.history.append((query, answer))
-
-            # Persist local UI history (display)
-            st.success("Answer generated")
-            st.write("**Answer:**")
-            st.info(answer)
-
-            # Show citations (KB blocks used)
-            if show_citations:
-                st.markdown("**Citations / KB blocks used:**")
-                used_kb = result.get("used_kb", [])
-                if used_kb:
-                    for i, b in enumerate(used_kb, 1):
-                        meta = b.get("meta", {})
-                        title = f"{meta.get('act','') } §{meta.get('section_number','')} {meta.get('section_title','')}"
-                        st.write(f"- [{i}] {title} — source: `{meta.get('source_file','')}`")
-                else:
-                    st.write("_No KB snippets used._")
-
-            # Show memory snippets used
-            st.markdown("**Memory snippets considered:**")
-            used_mem = result.get("used_memory", [])
-            if used_mem:
-                for m in used_mem:
-                    who = m["meta"].get("role", "user")
-                    ts = m["meta"].get("timestamp","")
-                    st.write(f"- ({who}) `{ts}` — {m['content'][:180]}...")
-            else:
-                st.write("_No memory snippets used._")
-
-            st.caption(f"Response generation latency: {elapsed:.2f}s, prompt chars: {result.get('prompt_chars', 'n/a')}")
-
-    # Render conversation history
-    st.divider()
-    st.subheader("Conversation")
-    if st.session_state.history:
-        for q,a in st.session_state.history[::-1]:
-            st.markdown(f"**You:** {q}")
-            st.markdown(f"**Bot:** {a}")
-            st.markdown("---")
+    used_mem = result.get("used_memory", [])
+    citations += "\n**Memory snippets considered:**\n"
+    if used_mem:
+        for m in used_mem:
+            who = m["meta"].get("role", "user")
+            ts = m["meta"].get("timestamp","")
+            citations += f"- ({who}) `{ts}` — {m['content'][:180]}...\n"
     else:
-        st.write("No messages yet. Start by typing a question and clicking Send.")
+        citations += "_No memory snippets used._\n"
 
-    # Memory viewer (inspect user memory)
-    st.divider()
-    st.subheader("Memory Viewer (backend)")
-    if st.button("Load recent memory"):
-        mem_list = memory.get_recent_memory(user_id=st.session_state.user_id, session_id=st.session_state.session_id, limit=50)
-        if not mem_list:
-            st.write("No memory for this user/session yet.")
-        else:
-            for item in mem_list:
-                who = item["meta"].get("role","user")
-                ts = item["meta"].get("timestamp","")
-                st.write(f"- ({who}) `{ts}` — {item['content'][:300]} ...")
+    citations += f"\nResponse generation latency: {elapsed:.2f}s, prompt chars: {result.get('prompt_chars', 'n/a')}"
+    return history, gr.update(value=""), citations
+
+def export_conversation(history, user_id, session_id):
+    if not history:
+        return None
+    txt = "\n\n".join([f"You: {q}\nBot: {a}" for q, a in history])
+    filename = f"conversation_{user_id}_{session_id[:8]}.txt"
+    return gr.File.update(value=(filename, txt.encode("utf-8")))
+
+def load_recent_memory(user_id, session_id):
+    mem_list = memory.get_recent_memory(user_id=user_id, session_id=session_id, limit=50)
+    if not mem_list:
+        return "No memory for this user/session yet."
+    out = ""
+    for item in mem_list:
+        who = item["meta"].get("role","user")
+        ts = item["meta"].get("timestamp","")
+        out += f"- ({who}) `{ts}` — {item['content'][:300]} ...\n"
+    return out
+
+with gr.Blocks(title="LegalAid Chatbot (RAG+Memory)") as demo:
+    gr.Markdown("# 🇮🇳 LegalAid — Conversational RAG with Memory (Gemini + Chroma)")
+    with gr.Row():
+        with gr.Column(scale=1):
+            user_id = gr.Textbox(label="User ID", value=f"user_{str(uuid.uuid4())[:8]}", interactive=True)
+            session_ids, session_labels = get_sessions(user_id.value)
+            session_id = gr.Textbox(label="Session ID", value=str(uuid.uuid4()), interactive=True)
+            new_session_btn = gr.Button("🆕 Start new session")
+            session_dropdown = gr.Dropdown(
+                label="Choose existing session",
+                choices=session_ids or ["(none)"],
+                value=session_ids[0] if session_ids else "(none)",
+                interactive=True
+            )
+            include_memory = gr.Checkbox(label="Include user memory", value=True)
+            include_kb = gr.Checkbox(label="Include legal KB", value=True)
+            show_citations = gr.Checkbox(label="Show citations in response", value=True)
+            export_btn = gr.Button("Export conversation (.txt)")
+            export_file = gr.File(label="Download conversation")
+            clear_btn = gr.Button("Clear local history (UI only)")
+            disclaimer = gr.Markdown("Disclaimer: This is an educational aid, not legal advice. See app disclaimer in README.")
+
+        with gr.Column(scale=3):
+            chatbot = gr.Chatbot(label="Conversation", value=[], show_label=True, type="messages")
+            query = gr.Textbox(label="Ask your legal question:")
+            send_btn = gr.Button("Send")
+            citations_box = gr.Markdown()
+            memory_viewer_btn = gr.Button("Load recent memory")
+            memory_viewer = gr.Markdown()
+
+    # Button logic
+    new_session_btn.click(lambda: str(uuid.uuid4()), None, session_id)
+    session_dropdown.change(lambda sid: sid if sid else session_id.value, session_dropdown, session_id)
+    send_btn.click(chat_fn, [chatbot, user_id, session_id, include_memory, include_kb, show_citations, query], [chatbot, query, citations_box])
+    export_btn.click(export_conversation, [chatbot, user_id, session_id], export_file)
+    clear_btn.click(lambda: [], None, chatbot)
+    memory_viewer_btn.click(load_recent_memory, [user_id, session_id], memory_viewer)
+
+demo.launch()
