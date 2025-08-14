@@ -1,4 +1,5 @@
-from typing import List, Dict
+from __future__ import annotations
+from typing import List, Dict, Any
 import chromadb
 from sentence_transformers import SentenceTransformer
 
@@ -11,18 +12,16 @@ class Retriever:
         self.embedder = SentenceTransformer(EMB_MODEL)
         self.top_k = top_k
 
-    def search(self, query: str, top_k: int = None) -> List[Dict]:
+    def search(self, query: str, top_k: int | None = None) -> List[Dict[str, Any]]:
         k = top_k or self.top_k
         q_emb = self.embedder.encode([query])[0]
         res = self.kb.query(query_embeddings=[q_emb], n_results=k)
-        hits = []
         docs = res.get("documents", [[]])[0]
         mets = res.get("metadatas", [[]])[0]
         dists = res.get("distances", [[]])[0]
+        items = []
         for d, m, dist in zip(docs, mets, dists):
-            hits.append({
-                "content": d,
-                "metadata": m,
-                "score": 1 - dist  # cosine similarity proxy
-            })
-        return hits
+            sim = 1.0 - float(dist)
+            items.append({"content": d, "meta": m, "score": sim})
+        items.sort(key=lambda x: x["score"], reverse=True)
+        return items
