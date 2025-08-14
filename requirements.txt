@@ -1,0 +1,11 @@
+streamlit
+chromadb
+sentence-transformers
+google-generativeai
+python-dotenv
+tqdm
+pypdf
+langchain
+pandas
+regex
+ragas
