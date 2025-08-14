@@ -51,7 +51,7 @@ def render_prompt(query: str, blocks: List[Dict[str, Any]]) -> str:
     for i, b in enumerate(blocks, 1):
         meta = b.get("meta", {})
         if b["type"] == "kb":
-            title = f"{meta.get('act','Law')} §{meta.get('section_number','')} {meta.get('section_title','')}".strip()
+            title = f"{meta.get('act','Law')} &{meta.get('section_number','')} {meta.get('section_title','')}".strip()
             parts.append(f"[KB {i}] {title}\n{b['content']}\n")
         else:
             who = meta.get("role", "user")

@@ -120,4 +120,54 @@ class MemoryStore:
         if len(pairs) > keep_last:
             drop = [pid for pid, _ in pairs[:-keep_last]]
             self.col.delete(ids=drop)
+    
+    # inside class MemoryStore (append these methods)
+
+    def list_sessions(self, *, user_id: str, limit: int = 50):
+        """
+        Return list of sessions for the given user_id ordered by most recent.
+        Each item: {"session_id": str, "last_ts": iso, "count": int}
+        """
+        # fetch all metadatas for this user
+        try:
+            res = self.col.get(where={"user_id": user_id})
+        except Exception:
+            return []
+
+        mets = res.get("metadatas", []) or []
+        ids = res.get("ids", []) or []
+        if not mets:
+            return []
+
+        # aggregate session stats
+        sessions = {}
+        for mid, m in zip(ids, mets):
+            sid = m.get("session_id")
+            ts = m.get("timestamp") or ""
+            sessions.setdefault(sid, {"count": 0, "last_ts": ts})
+            sessions[sid]["count"] += 1
+            # update last_ts if later
+            if ts and ts > sessions[sid]["last_ts"]:
+                sessions[sid]["last_ts"] = ts
+
+        out = [{"session_id": sid, "last_ts": sessions[sid]["last_ts"], "count": sessions[sid]["count"]} for sid in sessions]
+        out.sort(key=lambda x: x["last_ts"] or "", reverse=True)
+        return out[:limit]
+
+    def get_recent_memory(self, *, user_id: str, session_id: str = None, limit: int = 50):
+        """
+        Return raw memory items (content + meta) filtered by user and optionally session.
+        Useful for the memory viewer in the UI.
+        """
+        where = {"user_id": user_id}
+        if session_id:
+            where["session_id"] = session_id
+        res = self.col.get(where=where, limit=limit)
+        docs = res.get("documents", [])
+        mets = res.get("metadatas", [])
+        items = []
+        for d, m in zip(docs, mets):
+            items.append({"content": d, "meta": m})
+        return items
+
 
